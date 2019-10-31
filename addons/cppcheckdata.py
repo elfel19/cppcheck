@@ -771,9 +771,9 @@ class CppcheckData:
         # root is 'dumps' node, each config has its own 'dump' subnode.
         for cfgnode in data.getroot():
             if cfgnode.tag == 'dump':
-                self.configurations.append(Configuration(cfgnode))
-
-
+                self.configurations.append(cfgnode)
+    def Configuration(self,cfg):
+        return Configuration(cfg)
 # Get function arguments
 def getArgumentsRecursive(tok, arguments):
     if tok is None:

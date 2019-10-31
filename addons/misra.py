@@ -807,12 +807,21 @@ class MisraChecker:
                 if var.nameToken.scope not in scopeVars:
                     scopeVars[var.nameToken.scope] = []
                 scopeVars[var.nameToken.scope].append(var)
+
+        map_scopes = {}
+        for scope in data.scopes:
+            if scope.className:
+                s_name = scope.className[:num_sign_chars]
+                if s_name not in map_scopes:
+                    map_scopes[s_name] = []
+                map_scopes[s_name].append(scope)
+        enum = {}
         for innerScope in data.scopes:
             if innerScope.type == "Enum":
                 enum_token = innerScope.bodyStart.next
                 while enum_token != innerScope.bodyEnd:
                     if enum_token.values and enum_token.isName:
-                        enum.append(enum_token.str)
+                        enum[enum_token.str[:num_sign_chars]]=1
                     enum_token = enum_token.next
                 continue
             if innerScope not in scopeVars:
@@ -834,82 +843,76 @@ class MisraChecker:
                             else:
                                 self.reportError(outerVar.nameToken, 5, 3)
                     outerScope = outerScope.nestedIn
-                for scope in data.scopes:
-                    if scope.className and innerVar.nameToken.str[:num_sign_chars] == scope.className[:num_sign_chars]:
+                if innerVar.nameToken.str[:num_sign_chars] in map_scopes:
+                    for scope in map_scopes[innerVar.nameToken.str[:num_sign_chars]]:
                         if int(innerVar.nameToken.linenr) > int(scope.bodyStart.linenr):
                             self.reportError(innerVar.nameToken, 5, 3)
                         else:
                             self.reportError(scope.bodyStart, 5, 3)
 
-                for e in enum:
-                    for scope in data.scopes:
-                        if scope.className and innerVar.nameToken.str[:num_sign_chars] == e[:num_sign_chars]:
-                            if int(innerVar.nameToken.linenr) > int(innerScope.bodyStart.linenr):
-                                self.reportError(innerVar.nameToken, 5, 3)
-                            else:
-                                self.reportError(innerScope.bodyStart, 5, 3)
-        for e in enum:
-            for scope in data.scopes:
-                if scope.className and scope.className[:num_sign_chars] == e[:num_sign_chars]:
-                    self.reportError(scope.bodyStart, 5, 3)
-
+                if innerVar.nameToken.str[:num_sign_chars] in enum:
+                    if int(innerVar.nameToken.linenr) > int(innerScope.bodyStart.linenr):
+                        self.reportError(innerVar.nameToken, 5, 3)
+                    else:
+                        self.reportError(innerScope.bodyStart, 5, 3)
+        for scope in data.scopes:
+            if scope.className and scope.className[:num_sign_chars] in enum:
+                self.reportError(scope.bodyStart, 5, 3)
 
     def misra_5_4(self, data):
         num_sign_chars = self.get_num_significant_naming_chars(data)
         macro = {}
         compile_name = re.compile(r'#define ([a-zA-Z0-9_]+)')
         compile_param = re.compile(r'#define ([a-zA-Z0-9_]+)[(]([a-zA-Z0-9_, ]+)[)]')
+        short_names={}
+        macro_w_arg = []
         for dir in data.directives:
             res1 = compile_name.match(dir.str)
             if res1:
                 if dir not in macro:
                     macro.setdefault(dir, {})["name"] = []
                     macro.setdefault(dir, {})["params"] = []
-                macro[dir]["name"] = res1.group(1)
+                full_name = res1.group(1)
+                macro[dir]["name"] = full_name
+                short_name = full_name[:num_sign_chars]
+                if short_name in short_names:
+                    _dir = short_names[short_name]
+                    if full_name != macro[_dir]["name"]:
+                        self.reportError(dir, 5, 4)
+                else:
+                    short_names[short_name]=dir
             res2 = compile_param.match(dir.str)
             if res2:
                 res_gp2 = res2.group(2).split(",")
                 res_gp2 = [macroname.replace(" ", "") for macroname in res_gp2]
                 macro[dir]["params"].extend(res_gp2)
-        for mvar in macro:
-            if len(macro[mvar]["params"]) > 0:
-                for i, macroparam1 in enumerate(macro[mvar]["params"]):
-                    for j, macroparam2 in enumerate(macro[mvar]["params"]):
-                        if j > i and macroparam1[:num_sign_chars] == macroparam2[:num_sign_chars]:
-                            self.reportError(mvar, 5, 4)
-
-        for x, m_var1 in enumerate(macro):
-            for y, m_var2 in enumerate(macro):
-                if x < y and macro[m_var1]["name"] != macro[m_var2]["name"] and \
-                    macro[m_var1]["name"][:num_sign_chars] == macro[m_var2]["name"][:num_sign_chars]:
-                    if m_var1.linenr > m_var2.linenr:
+                macro_w_arg.append(dir)
+        for mvar in macro_w_arg:
+            for i, macroparam1 in enumerate(macro[mvar]["params"]):
+                for j, macroparam2 in enumerate(macro[mvar]["params"]):
+                    if j > i and macroparam1[:num_sign_chars] == macroparam2[:num_sign_chars]:
+                        self.reportError(mvar, 5, 4)
+                param = macroparam1
+                if  param[:num_sign_chars] in short_names:
+                    m_var1=short_names[param[:num_sign_chars]]
+                    if m_var1.linenr > mvar.linenr:
                         self.reportError(m_var1, 5, 4)
                     else:
-                        self.reportError(m_var2, 5, 4)
-                for param in macro[m_var2]["params"]:
-                    if macro[m_var1]["name"][:num_sign_chars] == param[:num_sign_chars]:
-                        if m_var1.linenr > m_var2.linenr:
-                            self.reportError(m_var1, 5, 4)
-                        else:
-                            self.reportError(m_var2, 5, 4)
-
+                        self.reportError(mvar, 5, 4)
 
     def misra_5_5(self, data):
         num_sign_chars = self.get_num_significant_naming_chars(data)
-        macroNames = []
+        macroNames = {}
         compiled = re.compile(r'#define ([A-Za-z0-9_]+)')
         for dir in data.directives:
             res = compiled.match(dir.str)
             if res:
-                macroNames.append(res.group(1))
+                macroNames[res.group(1)[:num_sign_chars]]=dir
         for var in data.variables:
-            for macro in macroNames:
-                if var.nameToken is not None:
-                    if var.nameToken.str[:num_sign_chars] == macro[:num_sign_chars]:
+            if var.nameToken and var.nameToken.str[:num_sign_chars] in macroNames:
                         self.reportError(var.nameToken, 5, 5)
         for scope in data.scopes:
-            for macro in macroNames:
-                if scope.className and scope.className[:num_sign_chars] == macro[:num_sign_chars]:
+            if scope.className and scope.className[:num_sign_chars] in macroNames:
                     self.reportError(scope.bodyStart, 5, 5)
 
 
@@ -944,7 +947,7 @@ class MisraChecker:
                 if e_token.str == '(':
                     e_token = e_token.link
                     continue
-                if not e_token.previous.str in ',{':
+                if type(e_token.previous.str) is str and not e_token.previous.str in ',{':
                     e_token = e_token.next
                     continue
                 if e_token.isName and e_token.values and e_token.valueType and e_token.valueType.typeScope == scope:
@@ -1299,9 +1302,9 @@ class MisraChecker:
             return
 
         for token in data.tokenlist:
-            if (not isConstantExpression(token)) or (not isUnsignedInt(token)):
-                continue
             if not token.values:
+                continue
+            if (not isConstantExpression(token)) or (not isUnsignedInt(token)):
                 continue
             for value in token.values:
                 if value.intvalue < 0 or value.intvalue > max_uint:
@@ -1749,15 +1752,20 @@ class MisraChecker:
 
 
     def misra_20_1(self, data):
+        token_in_file={}
+        for token in data.tokenlist:
+            if token.file not in token_in_file:
+                token_in_file[token.file] = int(token.linenr)
+            else:
+                token_in_file[token.file] = min(token_in_file[token.file], int(token.linenr))
+
         for directive in data.directives:
             if not directive.str.startswith('#include'):
                 continue
-            for token in data.tokenlist:
-                if token.file != directive.file:
-                    continue
-                if int(token.linenr) < int(directive.linenr):
-                    self.reportError(directive, 20, 1)
-                    break
+            if directive.file not in token_in_file:
+                continue
+            if token_in_file[directive.file] < int(directive.linenr):
+                self.reportError(directive, 20, 1)
 
 
     def misra_20_2(self, data):
@@ -2322,6 +2330,7 @@ class MisraChecker:
         cfgNumber = 0
 
         for cfg in data.configurations:
+            cfg = data.Configuration(cfg)
             cfgNumber = cfgNumber + 1
             if len(data.configurations) > 1:
                 self.printStatus('Checking ' + dumpfile + ', config "' + cfg.name + '"...')
