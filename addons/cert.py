@@ -398,6 +398,7 @@ if __name__ == '__main__':
                             VERIFY_EXPECTED.append(str(tok.linenr) + ':' + word)
 
         for cfg in data.configurations:
+            cfg = data.Configuration(cfg)
             if (len(data.configurations) > 1) and (not args.quiet):
                 print('Checking %s, config %s...' % (dumpfile, cfg.name))
             exp05(cfg)

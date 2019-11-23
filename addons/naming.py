@@ -49,6 +49,7 @@ for arg in sys.argv[1:]:
     print('Checking ' + arg + '...')
     data = cppcheckdata.parsedump(arg)
     for cfg in data.configurations:
+        cfg = data.Configuration(cfg)
         if len(data.configurations) > 1:
             print('Checking ' + arg + ', config "' + cfg.name + '"...')
         if RE_VARNAME:

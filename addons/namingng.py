@@ -111,6 +111,7 @@ def process(dumpfiles, configfile, debugprint=False):
                         evalExpr(conf["RE_NAMESPACE"], exp, mockToken, msgType, errors)
 
         for cfg in data.configurations:
+            cfg = data.Configuration(cfg)
             if len(data.configurations) > 1:
                 print('Checking ' + afile + ', config "' + cfg.name + '"...')
             if "RE_VARNAME" in conf and conf["RE_VARNAME"]:

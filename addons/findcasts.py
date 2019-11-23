@@ -14,6 +14,7 @@ for arg in sys.argv[1:]:
     data = cppcheckdata.parsedump(arg)
 
     for cfg in data.configurations:
+        cfg = data.Configuration(cfg)
         if len(data.configurations) > 1:
             print('Checking ' + arg + ', config "' + cfg.name + '"...')
         for token in cfg.tokenlist:

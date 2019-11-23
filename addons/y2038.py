@@ -166,6 +166,7 @@ def check_y2038_safe(dumpfile, quiet=False):
 
     # go through each configuration
     for cfg in data.configurations:
+        cfg = data.Configuration(cfg)
         if not quiet:
             print('Checking ' + srcfile + ', config "' + cfg.name + '"...')
         safe_ranges = []

@@ -81,6 +81,7 @@ def stringConcatInArrayInit(configurations, rawTokens):
 
 def implicitlyVirtual(data):
     for cfg in data.configurations:
+        cfg = data.Configuration(cfg)
         for function in cfg.functions:
             if function.isImplicitlyVirtual is None:
                 continue
@@ -90,6 +91,7 @@ def implicitlyVirtual(data):
 
 def ellipsisStructArg(data):
     for cfg in data.configurations:
+        cfg = data.Configuration(cfg)
         for tok in cfg.tokenlist:
             if tok.str != '(':
                 continue
