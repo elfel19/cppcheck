@@ -48,11 +48,13 @@ def getArguments(ftok):
 def isStringLiteral(tokenString):
     return tokenString.startswith('"')
 
+
 # check data
-def stringConcatInArrayInit(configurations, rawTokens):
+def stringConcatInArrayInit(data):
     # Get all string macros
     stringMacros = []
-    for cfg in configurations:
+    for cfg in data.configurations:
+        cfg = data.Configuration(cfg)
         for directive in cfg.directives:
             res = re.match(r'#define[ ]+([A-Za-z0-9_]+)[ ]+".*', directive.str)
             if res:
@@ -62,6 +64,7 @@ def stringConcatInArrayInit(configurations, rawTokens):
 
     # Check code
     arrayInit = False
+    rawTokens = data.rawTokens
     for i in range(len(rawTokens)):
         if i < 2:
             continue
@@ -151,7 +154,7 @@ for arg in sys.argv[1:]:
                     if word in ['stringConcatInArrayInit', 'implicitlyVirtual', 'ellipsisStructArg']:
                         VERIFY_EXPECTED.append(str(tok.linenr) + ':' + word)
 
-    stringConcatInArrayInit(data.configurations, data.rawTokens)
+    stringConcatInArrayInit(data)
     implicitlyVirtual(data)
     ellipsisStructArg(data)
 
