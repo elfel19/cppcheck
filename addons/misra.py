@@ -1000,10 +1000,10 @@ class MisraChecker:
                 macroNames[res.group(1)[:num_sign_chars]]=dir
         for var in data.variables:
             if var.nameToken and var.nameToken.str[:num_sign_chars] in macroNames:
-                        self.reportError(var.nameToken, 5, 5)
+                self.reportError(var.nameToken, 5, 5)
         for scope in data.scopes:
             if scope.className and scope.className[:num_sign_chars] in macroNames:
-                    self.reportError(scope.bodyStart, 5, 5)
+                self.reportError(scope.bodyStart, 5, 5)
 
     def misra_7_1(self, rawTokens):
         compiled = re.compile(r'^0[0-7]+$')
